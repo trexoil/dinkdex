@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getCoachBySlug } from "@/lib/db";
-import { HiLocationMarker, HiPhone, HiMail, HiGlobe, HiShieldCheck, HiCurrencyDollar, HiBadgeCheck } from "react-icons/hi";
+import { getCoachImage } from "@/lib/listing-images";
+import { HiLocationMarker, HiPhone, HiMail, HiGlobe, HiShieldCheck, HiCurrencyDollar, HiBadgeCheck, HiOfficeBuilding } from "react-icons/hi";
+
+const panel = "rounded-[var(--radius-lg)] border border-border bg-surface p-6";
 
 export default async function CoachDetailPage({
   params,
@@ -13,55 +17,61 @@ export default async function CoachDetailPage({
 
   if (!coach) notFound();
 
+  const coachImage = getCoachImage(coach);
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-brand-600">Home</Link>
+    <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <nav className="mb-6 text-sm text-subtle">
+        <Link href="/" className="transition-colors hover:text-fg">Home</Link>
         <span className="mx-2">/</span>
-        <Link href="/coaches" className="hover:text-brand-600">Coaches</Link>
+        <Link href="/coaches" className="transition-colors hover:text-fg">Coaches</Link>
         <span className="mx-2">/</span>
-        <span className="text-gray-900">{coach.name}</span>
-      </div>
+        <span className="text-fg">{coach.name}</span>
+      </nav>
 
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-start gap-4">
-          <div className="w-16 h-16 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-2xl flex-shrink-0">
-            {coach.name.charAt(0)}
+      <div className="mb-8 grid gap-6 md:grid-cols-[220px_1fr] md:items-center">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-xl)] border border-border bg-surface">
+          <Image
+            src={coachImage}
+            alt={coach.name}
+            fill
+            priority
+            sizes="(min-width: 768px) 220px, 100vw"
+            className="object-cover"
+          />
+        </div>
+        <div>
+          <div className="mb-1 flex flex-wrap items-center gap-3">
+            <h1 className="text-section text-fg">{coach.name}</h1>
+            {coach.verified && <HiShieldCheck className="text-accent" size={24} />}
+            {coach.is_premium && (
+              <span className="rounded-full bg-accent px-3 py-1 text-sm font-semibold text-bg">Premium</span>
+            )}
           </div>
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-bold text-gray-900">{coach.name}</h1>
-              {coach.verified && <HiShieldCheck className="text-brand-600" size={24} />}
-              {coach.is_premium && (
-                <span className="bg-brand-100 text-brand-700 text-sm font-medium px-3 py-1 rounded-full">Premium</span>
-              )}
-            </div>
-            <div className="flex items-center gap-1 text-gray-500">
-              <HiLocationMarker size={16} />
-              <span>{coach.city}, {coach.country}</span>
-            </div>
+          <div className="flex items-center gap-1.5 text-muted">
+            <HiLocationMarker size={16} className="text-accent" />
+            <span>{coach.city}, {coach.country}</span>
           </div>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-6">
-          {/* Bio */}
+      <div className="grid gap-8 md:grid-cols-3">
+        <div className="space-y-6 md:col-span-2">
           {coach.bio && (
-            <div className="bg-white border border-gray-100 rounded-2xl p-6">
-              <h2 className="font-semibold text-gray-900 mb-3">About</h2>
-              <p className="text-gray-600">{coach.bio}</p>
+            <div className={panel}>
+              <h2 className="text-headline text-fg mb-3">About</h2>
+              <p className="text-muted leading-relaxed">{coach.bio}</p>
             </div>
           )}
 
           {/* Certifications */}
           {coach.certifications && coach.certifications.length > 0 && (
-            <div className="bg-white border border-gray-100 rounded-2xl p-6">
-              <h2 className="font-semibold text-gray-900 mb-3">Certifications</h2>
+            <div className={panel}>
+              <h2 className="text-headline text-fg mb-3">Certifications</h2>
               <div className="flex flex-wrap gap-2">
                 {coach.certifications.map((cert: string) => (
-                  <span key={cert} className="flex items-center gap-1.5 bg-brand-50 text-brand-700 text-sm px-3 py-1.5 rounded-full">
+                  <span key={cert} className="flex items-center gap-1.5 rounded-full bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent">
                     <HiBadgeCheck size={16} />
                     {cert}
                   </span>
@@ -72,12 +82,12 @@ export default async function CoachDetailPage({
 
           {/* Courts */}
           {coach.courts && coach.courts.length > 0 && (
-            <div className="bg-white border border-gray-100 rounded-2xl p-6">
-              <h2 className="font-semibold text-gray-900 mb-3">Coaches At</h2>
-              <div className="space-y-2">
-                {coach.courts.map((court: any) => (
-                  <Link key={court.id} href={`/courts/${court.slug}`} className="block text-brand-600 hover:text-brand-700 font-medium">
-                    🏟️ {court.name}
+            <div className={panel}>
+              <h2 className="text-headline text-fg mb-3">Coaches at</h2>
+              <div className="space-y-1">
+                {coach.courts.map((court: { id: number; name: string; slug: string }) => (
+                  <Link key={court.id} href={`/courts/${court.slug}`} className="flex items-center gap-2 py-1 font-medium text-accent transition-colors hover:text-accent-strong">
+                    <HiOfficeBuilding size={16} /> {court.name}
                   </Link>
                 ))}
               </div>
@@ -87,45 +97,45 @@ export default async function CoachDetailPage({
 
         {/* Sidebar */}
         <div className="space-y-4">
-          <div className="bg-white border border-brand-200 rounded-2xl p-6 sticky top-24">
-            <h3 className="font-semibold text-gray-900 mb-4">Book a Session</h3>
-            <div className="space-y-3 mb-4">
+          <div className={`${panel} sticky top-24`}>
+            <h3 className="text-headline text-fg mb-4">Book a session</h3>
+            <div className="mb-4 space-y-3">
               {coach.hourly_rate && (
-                <div className="flex items-center gap-2 text-green-700 font-semibold text-lg">
+                <div className="flex items-center gap-2 text-lg font-semibold text-emerald-400">
                   <HiCurrencyDollar size={20} />
                   RM {coach.hourly_rate}/hr
                 </div>
               )}
-              <div className="text-sm text-gray-500">{coach.experience_years}+ years experience</div>
+              <div className="text-sm text-subtle">{coach.experience_years}+ years experience</div>
             </div>
 
-            <div className="space-y-2 mb-4">
+            <div className="mb-4 space-y-2">
               {coach.phone && (
-                <a href={`tel:${coach.phone}`} className="flex items-center gap-3 text-gray-600 hover:text-brand-600 transition-colors text-sm">
-                  <HiPhone size={16} /> {coach.phone}
+                <a href={`tel:${coach.phone}`} className="flex items-center gap-3 text-sm text-muted transition-colors hover:text-fg">
+                  <HiPhone size={16} className="text-accent" /> {coach.phone}
                 </a>
               )}
               {coach.email && (
-                <a href={`mailto:${coach.email}`} className="flex items-center gap-3 text-gray-600 hover:text-brand-600 transition-colors text-sm">
-                  <HiMail size={16} /> {coach.email}
+                <a href={`mailto:${coach.email}`} className="flex items-center gap-3 text-sm text-muted transition-colors hover:text-fg">
+                  <HiMail size={16} className="text-accent" /> {coach.email}
                 </a>
               )}
               {coach.website && (
-                <a href={coach.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-gray-600 hover:text-brand-600 transition-colors text-sm">
-                  <HiGlobe size={16} /> Website
+                <a href={coach.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm text-muted transition-colors hover:text-fg">
+                  <HiGlobe size={16} className="text-accent" /> Website
                 </a>
               )}
             </div>
 
             {/* Lead Capture */}
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-sm text-gray-500 mb-3">Want to book a lesson with {coach.name}?</p>
+            <div className="border-t border-border pt-4">
+              <p className="mb-3 text-sm text-subtle">Want to book a lesson with {coach.name}?</p>
               <form className="space-y-2">
-                <input type="text" placeholder="Your name" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
-                <input type="email" placeholder="Your email" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
-                <textarea placeholder="Message (skill level, preferred time...)" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" rows={3} />
-                <button type="submit" className="w-full bg-brand-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-brand-700 transition-colors">
-                  Request Booking
+                <input type="text" placeholder="Your name" className="w-full rounded-[var(--radius-md)] border border-border-strong bg-surface-2 px-3 py-2 text-sm text-fg placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
+                <input type="email" placeholder="Your email" className="w-full rounded-[var(--radius-md)] border border-border-strong bg-surface-2 px-3 py-2 text-sm text-fg placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
+                <textarea placeholder="Message (skill level, preferred time...)" rows={3} className="w-full rounded-[var(--radius-md)] border border-border-strong bg-surface-2 px-3 py-2 text-sm text-fg placeholder:text-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/40" />
+                <button type="submit" className="w-full rounded-[var(--radius-md)] bg-accent py-2 text-sm font-semibold text-bg transition-colors hover:bg-accent-strong">
+                  Request booking
                 </button>
               </form>
             </div>
