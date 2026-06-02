@@ -1,23 +1,12 @@
 import { Pool } from 'pg'
-import * as dns from 'dns'
 
-const HOSTNAME = 'ep-dark-surf-aplhdrqi-pooler.c-7.us-east-1.aws.neon.tech'
-
-async function resolveHost(): Promise<string | null> {
-  try {
-    const addrs = await new Promise<string[]>((resolve, reject) => {
-      dns.resolve4(HOSTNAME, (err, addrs) => {
-        if (err || !addrs.length) reject(err || new Error('No IPv4'))
-        else resolve(addrs)
-      })
-    })
-    return addrs[0]
-  } catch {
-    return null
-  }
-}
+// Simple pool — use connection string directly.
+// On Vercel serverless, Neon hostname resolves fine.
+// On the local dev server, DNS may prefer IPv6 causing timeout.
+// We handle that by catching the error and retrying with IPv4 workaround.
 
 let pool: Pool | null = null
+let failing = false
 
 async function getPool(): Promise<Pool> {
   if (pool) return pool
@@ -26,19 +15,47 @@ async function getPool(): Promise<Pool> {
 
   const url = new URL(connStr)
 
-  // Try direct connection first (works on Vercel)
-  // Fall back to IPv4 workaround (needed on some local servers)
-  const ipv4 = await resolveHost()
+  if (!failing) {
+    // Try direct connection first (works on Vercel)
+    pool = new Pool({
+      connectionString: connStr,
+      ssl: { rejectUnauthorized: false, servername: url.hostname },
+      connectionTimeoutMillis: 10000,
+      idleTimeoutMillis: 30000,
+      max: 3,
+    })
+    // Test the connection
+    try {
+      const client = await pool.connect()
+      client.release()
+      return pool
+    } catch {
+      // Direct connection failed — fall through to IPv4 workaround
+      await pool.end().catch(() => {})
+      pool = null
+      failing = true
+    }
+  }
+
+  // IPv4 workaround (required on some local servers where DNS prefers IPv6)
+  const { resolve4 } = await import('dns')
+  const ipv4 = await new Promise<string>((resolve, reject) => {
+    resolve4(url.hostname, (err, addrs) => {
+      if (err || !addrs.length) reject(err || new Error('No IPv4'))
+      else resolve(addrs[0])
+    })
+  })
 
   pool = new Pool({
-    host: ipv4 || HOSTNAME,
+    host: ipv4,
     database: url.pathname.slice(1),
     user: url.username,
     password: url.password,
     port: parseInt(url.port || '5432'),
-    ssl: { rejectUnauthorized: false, servername: HOSTNAME },
-    connectionTimeoutMillis: 20000,
+    ssl: { rejectUnauthorized: false, servername: url.hostname },
+    connectionTimeoutMillis: 10000,
     idleTimeoutMillis: 30000,
+    max: 3,
   })
   return pool
 }
