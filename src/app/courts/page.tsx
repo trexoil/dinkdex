@@ -18,7 +18,7 @@ export default async function CourtsPage({
     search: params.search,
     city: params.city,
     indoor: params.indoor === 'true' ? true : params.indoor === 'false' ? false : undefined,
-    limit: 50,
+    limit: 500,
   });
 
   const cityParam = params.city || '';
