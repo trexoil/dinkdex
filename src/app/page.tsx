@@ -6,14 +6,14 @@ import { HiShieldCheck, HiGlobeAlt, HiPhotograph, HiLocationMarker, HiArrowRight
 import SearchBar from "@/components/SearchBar";
 import CourtCard from "@/components/CourtCard";
 import CoachCard from "@/components/CoachCard";
-import { getFeaturedCourts, getFeaturedCoaches } from "@/lib/db";
+import { getFeaturedCourts, getFeaturedCoaches, getCityCourtCounts } from "@/lib/db";
 import { getCourtImage } from "@/lib/listing-images";
 
-const locations = [
-  { name: "Kuala Lumpur", country: "Malaysia", courts: "18+", image: "/images/court-kenanga-city-stadium.png" },
-  { name: "Singapore", country: "Singapore", courts: "15+", image: "/images/indoor-facility.jpg" },
-  { name: "Bangkok", country: "Thailand", courts: "12+", image: "/images/court-bangkok-indoor.png" },
-  { name: "Los Angeles", country: "USA", courts: "40+", image: "/images/court-venice-beach.png" },
+const locationMeta = [
+  { name: "Kuala Lumpur", country: "Malaysia", image: "/images/court-kenanga-city-stadium.png" },
+  { name: "Singapore", country: "Singapore", image: "/images/indoor-facility.jpg" },
+  { name: "Bangkok", country: "Thailand", image: "/images/court-bangkok-indoor.png" },
+  { name: "Los Angeles", country: "USA", image: "/images/court-venice-beach.png" },
 ];
 
 const valueProps = [
@@ -35,10 +35,16 @@ const valueProps = [
 ];
 
 export default async function HomePage() {
-  const [featuredCourts, featuredCoaches] = await Promise.all([
+  const [featuredCourts, featuredCoaches, cityCounts] = await Promise.all([
     getFeaturedCourts(6),
     getFeaturedCoaches(3),
+    getCityCourtCounts(locationMeta.map(l => l.name)),
   ]);
+
+  const locations = locationMeta.map((loc) => ({
+    ...loc,
+    courts: `${cityCounts[loc.name] || 0}+`,
+  }));
 
   const lead = featuredCourts[0];
   const leadImage = lead ? getCourtImage(lead) : "/images/page-courts-directory.png";

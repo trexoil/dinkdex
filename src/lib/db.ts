@@ -95,6 +95,19 @@ export async function getFeaturedCoaches(limit = 6) {
   return getAllCoaches({ featured: true, limit })
 }
 
+export async function getCityCourtCounts(cities: string[]) {
+  if (!cities.length) return {}
+  const placeholders = cities.map((_, i) => `$${i + 1}`).join(', ')
+  const result = await query(
+    `SELECT city, COUNT(*)::int as count FROM courts WHERE city = ANY(ARRAY[${placeholders}]) GROUP BY city`,
+    cities
+  )
+  const counts: Record<string, number> = {}
+  result.rows.forEach((r: any) => { counts[r.city] = parseInt(r.count, 10) })
+  cities.forEach(c => { if (!counts[c]) counts[c] = 0 })
+  return counts
+}
+
 export async function createLead(data: { email: string; name?: string; type?: string; message?: string }) {
   const r = await query('INSERT INTO leads (email,name,type,message) VALUES ($1,$2,$3,$4) RETURNING id', [data.email, data.name||null, data.type||'newsletter', data.message||null])
   return r.rows[0]
