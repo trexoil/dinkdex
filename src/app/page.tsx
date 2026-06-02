@@ -4,13 +4,14 @@ import Link from "next/link";
 import SearchBar from "@/components/SearchBar";
 import CourtCard from "@/components/CourtCard";
 import CoachCard from "@/components/CoachCard";
-import { getFeaturedCourts, getFeaturedCoaches, getCities } from "@/lib/db";
+import { getFeaturedCourts, getFeaturedCoaches, getCities, getCourtCounts } from "@/lib/db";
 
 export default async function HomePage() {
-  const [featuredCourts, featuredCoaches, cities] = await Promise.all([
+  const [featuredCourts, featuredCoaches, cities, counts] = await Promise.all([
     getFeaturedCourts(6),
     getFeaturedCoaches(3),
     getCities(),
+    getCourtCounts(),
   ]);
 
   return (
@@ -22,7 +23,7 @@ export default async function HomePage() {
             Find Your <span className="text-yellow-400">Dink</span>. Find Your Court.
           </h1>
           <p className="text-lg md:text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Discover pickleball courts, coaches, and tournaments near you. The world's fastest-growing sport deserves a better directory.
+            {counts.courts}+ pickleball courts in {counts.countries} countries. {counts.coaches}+ certified coaches. Find yours today.
           </p>
           <SearchBar placeholder="Search by city, court name, or coach..." className="max-w-2xl mx-auto" />
           <div className="flex flex-wrap justify-center gap-3 mt-6 text-sm text-gray-400">
@@ -40,9 +41,9 @@ export default async function HomePage() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8">
         <div className="grid grid-cols-3 gap-4 bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
           {[
-            { label: 'Courts Listed', value: '15+', icon: '🏟️' },
-            { label: 'Countries', value: '7', icon: '🌍' },
-            { label: 'Coaches', value: '8+', icon: '🎾' },
+            { label: 'Courts Listed', value: `${counts.courts}+`, icon: '🏟️' },
+            { label: 'Countries', value: `${counts.countries}`, icon: '🌍' },
+            { label: 'Coaches', value: `${counts.coaches}+`, icon: '🎾' },
           ].map((stat) => (
             <div key={stat.label} className="text-center">
               <div className="text-2xl mb-1">{stat.icon}</div>
