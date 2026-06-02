@@ -1,59 +1,15 @@
 import { Pool } from 'pg'
 
-// Simple pool — use connection string directly.
-// On Vercel serverless, Neon hostname resolves fine.
-// On the local dev server, DNS may prefer IPv6 causing timeout.
-// We handle that by catching the error and retrying with IPv4 workaround.
-
 let pool: Pool | null = null
-let failing = false
 
-async function getPool(): Promise<Pool> {
+function getPool(): Pool {
   if (pool) return pool
   const connStr = process.env.DATABASE_URL
   if (!connStr) throw new Error('DATABASE_URL is not set')
-
-  const url = new URL(connStr)
-
-  if (!failing) {
-    // Try direct connection first (works on Vercel)
-    pool = new Pool({
-      connectionString: connStr,
-      ssl: { rejectUnauthorized: false, servername: url.hostname },
-      connectionTimeoutMillis: 10000,
-      idleTimeoutMillis: 30000,
-      max: 3,
-    })
-    // Test the connection
-    try {
-      const client = await pool.connect()
-      client.release()
-      return pool
-    } catch {
-      // Direct connection failed — fall through to IPv4 workaround
-      await pool.end().catch(() => {})
-      pool = null
-      failing = true
-    }
-  }
-
-  // IPv4 workaround (required on some local servers where DNS prefers IPv6)
-  const { resolve4 } = await import('dns')
-  const ipv4 = await new Promise<string>((resolve, reject) => {
-    resolve4(url.hostname, (err, addrs) => {
-      if (err || !addrs.length) reject(err || new Error('No IPv4'))
-      else resolve(addrs[0])
-    })
-  })
-
   pool = new Pool({
-    host: ipv4,
-    database: url.pathname.slice(1),
-    user: url.username,
-    password: url.password,
-    port: parseInt(url.port || '5432'),
-    ssl: { rejectUnauthorized: false, servername: url.hostname },
-    connectionTimeoutMillis: 10000,
+    connectionString: connStr,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 15000,
     idleTimeoutMillis: 30000,
     max: 3,
   })
@@ -61,7 +17,7 @@ async function getPool(): Promise<Pool> {
 }
 
 export async function query(text: string, params?: any[]) {
-  const p = await getPool()
+  const p = getPool()
   const client = await p.connect()
   try {
     const result = await client.query(text, params)
@@ -96,9 +52,7 @@ export async function getAllCourts({
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
   const limitClause = limit ? `LIMIT $${paramIndex}` : ''
   if (limit) { params.push(limit); paramIndex++ }
-  const offsetClause = offset ? `OFFSET $${paramIndex}` : ''
-  if (offset) { params.push(offset); paramIndex++ }
-  const result = await query(`SELECT * FROM courts c ${where} ORDER BY c.is_premium DESC, c.created_at DESC ${limitClause} ${offsetClause}`, params)
+  const result = await query(`SELECT * FROM courts c ${where} ORDER BY c.is_premium DESC, c.created_at DESC ${limitClause}`, params)
   return result.rows
 }
 
@@ -119,9 +73,7 @@ export async function getAllCoaches({ search, city, featured, limit, offset }: {
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
   const limitClause = limit ? `LIMIT $${paramIndex}` : ''
   if (limit) { params.push(limit); paramIndex++ }
-  const offsetClause = offset ? `OFFSET $${paramIndex}` : ''
-  if (offset) { params.push(offset); paramIndex++ }
-  const result = await query(`SELECT co.*, COALESCE(json_agg(json_build_object('id',c.id,'name',c.name,'slug',c.slug)) FILTER (WHERE c.id IS NOT NULL), '[]'::json) as courts FROM coaches co LEFT JOIN coach_courts cc ON co.id = cc.coach_id LEFT JOIN courts c ON cc.court_id = c.id ${where} GROUP BY co.id ORDER BY co.is_premium DESC, co.created_at DESC ${limitClause} ${offsetClause}`, params)
+  const result = await query(`SELECT co.*, COALESCE(json_agg(json_build_object('id',c.id,'name',c.name,'slug',c.slug)) FILTER (WHERE c.id IS NOT NULL), '[]'::json) as courts FROM coaches co LEFT JOIN coach_courts cc ON co.id = cc.coach_id LEFT JOIN courts c ON cc.court_id = c.id ${where} GROUP BY co.id ORDER BY co.is_premium DESC, co.created_at DESC ${limitClause}`, params)
   return result.rows
 }
 
