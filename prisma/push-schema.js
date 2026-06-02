@@ -19,7 +19,7 @@ async function pushSchema() {
     host: ipv4,
     database: 'neondb',
     user: 'neondb_owner',
-    password: 'npg_6HNsvG1qZRSA',
+    password: 'npg_VsGC4LqZY9iS',
     port: 5432,
     ssl: { rejectUnauthorized: false, servername: HOSTNAME },
     connectionTimeoutMillis: 10000,
