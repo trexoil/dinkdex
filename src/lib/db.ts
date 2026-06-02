@@ -120,19 +120,6 @@ export async function getFeaturedCoaches(limit = 6) {
   return getAllCoaches({ featured: true, limit })
 }
 
-export async function getCourtCounts() {
-  const result = await query('SELECT COUNT(*) as total FROM courts')
-  const total = parseInt(result.rows[0].total, 10)
-
-  const countriesResult = await query('SELECT COUNT(DISTINCT country) as total FROM courts')
-  const countries = parseInt(countriesResult.rows[0].total, 10)
-
-  const coachesResult = await query('SELECT COUNT(*) as total FROM coaches')
-  const coaches = parseInt(coachesResult.rows[0].total, 10)
-
-  return { courts: total, countries, coaches }
-}
-
 export async function createLead(data: { email: string; name?: string; type?: string; message?: string }) {
   const r = await query('INSERT INTO leads (email,name,type,message) VALUES ($1,$2,$3,$4) RETURNING id', [data.email, data.name||null, data.type||'newsletter', data.message||null])
   return r.rows[0]
